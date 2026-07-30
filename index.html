@@ -1208,17 +1208,97 @@ async function callAI(messages,onChunk,sys){
   return full;
 }
 
+async function buildAutoContext(){
+  const lines=[];
+  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  lines.push(`DATE: ${today}`);
+  lines.push('');
+
+  // ESPN slate — games + status + odds
+  try{
+    const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard');
+    const data=await r.json();
+    const events=data.events||[];
+    if(events.length){
+      lines.push('=== TODAY\'S MLB SLATE (ESPN) ===');
+      events.forEach(e=>{
+        const comp=e.competitions?.[0];
+        const home=comp?.competitors?.find(c=>c.homeAway==='home');
+        const away=comp?.competitors?.find(c=>c.homeAway==='away');
+        const status=comp?.status?.type?.name||'';
+        const odds=comp?.odds?.[0];
+        const startTime=new Date(e.date).toLocaleTimeString([],{hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+        const awayName=away?.team?.shortDisplayName||away?.team?.abbreviation||'';
+        const homeName=home?.team?.shortDisplayName||home?.team?.abbreviation||'';
+        const awayAbbr=away?.team?.abbreviation||'';
+        const homeAbbr=home?.team?.abbreviation||'';
+
+        // Probable pitchers
+        const awayProb=away?.probables?.[0];
+        const homeProb=home?.probables?.[0];
+        const awayPitcher=awayProb?.athlete?.displayName||'TBD';
+        const homePitcher=homeProb?.athlete?.displayName||'TBD';
+        const awayERA=awayProb?.statistics?.find(s=>s.name==='ERA')?.displayValue||'—';
+        const homeERA=homeProb?.statistics?.find(s=>s.name==='ERA')?.displayValue||'—';
+
+        // Odds
+        let oddsStr='';
+        if(odds){
+          const awayML=odds.awayTeamOdds?.moneyLine;
+          const homeML=odds.homeTeamOdds?.moneyLine;
+          const ou=odds.overUnder;
+          const spread=odds.spread;
+          oddsStr=` | ML: ${awayML>0?'+':''}${awayML||'—'} / ${homeML>0?'+':''}${homeML||'—'}`;
+          if(ou)oddsStr+=` | O/U: ${ou}`;
+          if(spread)oddsStr+=` | Spread: ${spread}`;
+        }
+
+        let gameStr=`${awayName} (${awayAbbr}) @ ${homeName} (${homeAbbr}) — ${startTime}`;
+        if(status==='STATUS_FINAL')gameStr+=` [FINAL: ${away?.score}-${home?.score}]`;
+        else if(status==='STATUS_IN_PROGRESS')gameStr+=` [LIVE: ${away?.score}-${home?.score}]`;
+        gameStr+=oddsStr;
+        gameStr+=`\n  Starters: ${awayAbbr}: ${awayPitcher} (ERA ${awayERA}) vs ${homeAbbr}: ${homePitcher} (ERA ${homeERA})`;
+        lines.push(gameStr);
+      });
+      lines.push('');
+    }
+  }catch(e){lines.push('(ESPN slate unavailable)');}
+
+  // Weather note
+  lines.push('=== WEATHER NOTE ===');
+  lines.push('Check weather for each outdoor game within 60 minutes of first pitch per Rule 6. Key thresholds: wind 10+ mph out = +0.8 runs, 15+ mph out = +1.5 runs, wind in = subtract same. Temp below 60°F = -1.0 run. Coors Field always check wind direction.');
+  lines.push('');
+
+  // Instructions
+  lines.push('=== INSTRUCTIONS ===');
+  lines.push('Run the full pre-pick checklist from the brain file against every game above.');
+  lines.push('Apply all 9 rules and all active intelligence flags to every matchup.');
+  lines.push('Calculate EV for each qualifying pick. Only output picks that clear ALL minimum thresholds.');
+  lines.push('Format each pick with: team, market, odds, EV%, confidence, stake size, and which rules fired.');
+  lines.push('Show your rule-by-rule analysis for each pick considered.');
+
+  return lines.join('\n');
+}
+
 async function runPicks(){
   if(!S.brain){toast('Sync brain file first','error');return;}
-  const ctx=document.getElementById('picks-context').value;
+  const manualCtx=document.getElementById('picks-context').value;
   const out=document.getElementById('picks-output');
   const loading=document.getElementById('picks-loading');
   const btn=document.getElementById('run-picks-btn');
-  out.className='ai-out dim';out.textContent='';
+  out.className='ai-out dim';out.textContent='Fetching today\'s slate...';
   loading.style.display='flex';btn.disabled=true;
   document.querySelector('#page-picks .tabs .tab[data-tab="to"]')?.click();
-  const sys=`You are an expert MLB +EV sports betting analyst. Apply EVERY rule and flag from the brain file. Format picks clearly with EV%, confidence, stake sizing, and which rules fired or did not fire.`;
-  const msg=`Brain file:\n\n${S.brain}\n\n---\n\nDate: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}\n\n${ctx?'Context:\n'+ctx+'\n\n':''}Run today's picks using the full pre-pick checklist. Apply all 9 rules and all active intelligence flags.`;
+
+  // Auto-build context from ESPN + manual input
+  let autoCtx='';
+  try{autoCtx=await buildAutoContext();}catch(e){autoCtx='(Auto-context unavailable)';}
+  const ctx=autoCtx+(manualCtx?'\n\n=== ADDITIONAL CONTEXT ===\n'+manualCtx:'');
+
+  out.textContent='';
+  const sys=`You are an expert MLB +EV sports betting analyst. You have the brain file with 9 permanent model rules and active intelligence flags. You also have today's full slate with confirmed starters, odds, and game times fetched automatically from ESPN. Apply EVERY rule and flag to every game on the slate. Show your full analysis for each game considered. Format qualifying picks clearly with: pick, odds, EV%, confidence score, stake size (Half or Quarter Kelly), and exactly which rules fired or cleared. Do not ask for more information — everything you need is provided.`;
+  const msg=`Brain file:\n\n${S.brain}\n\n---\n\n${ctx}`;
+
   try{
     await callAI([{role:'user',content:msg}],(chunk,full)=>{out.className='ai-out';out.textContent=full;S.picks=full;},sys);
     loading.style.display='none';btn.disabled=false;
@@ -1232,7 +1312,7 @@ async function runPicks(){
     setAutoStatus('Watching for games to go final...','dim');
     checkAutoUpdate();
     document.getElementById('step-2').classList.add('done');
-    toast('Analysis complete — '+document.querySelectorAll('#picks-cards .pick').length+' picks generated','success');
+    toast('Analysis complete','success');
   }catch(e){out.textContent='Error: '+e.message;loading.style.display='none';btn.disabled=false;toast(e.message,'error');}
 }
 
