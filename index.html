@@ -688,13 +688,14 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
   <button class="nav-btn act" onclick="showPage('picks')" id="nav-picks">Today</button>
   <button class="nav-btn" onclick="showPage('results')" id="nav-results">Analytics</button>
   <button class="nav-btn" id="nav-ledger" onclick="showPage('ledger');if(S.ledger||S.brain){buildHistory();}else{toast('Sync brain file first','error');}">History</button>
+  <button class="nav-btn" onclick="showPage('odds');buildOdds();" id="nav-odds">Odds</button>
   <button class="nav-btn" onclick="promptSettings()" id="nav-settings">Settings</button>
   <div class="nav-gap"></div>
   <div class="nav-status">
     <div class="status-pip" id="sync-dot"></div>
     <span id="sync-label">Not connected</span>
   </div>
-  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.2.2</div>
+  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.3.0</div>
 </nav>
 <div class="signal-bar" id="signal-bar"></div>
 
@@ -1037,6 +1038,74 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
             <tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:32px;font-size:12px;">
               <div style="margin-bottom:10px;">Sync the brain file to load pick history</div>
               <button onclick="fetchBrain().then(()=>buildHistory())" style="background:var(--ink);color:#f5f3ee;border:none;border-radius:6px;padding:7px 14px;font-size:11px;cursor:pointer;">Sync brain</button>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ ODDS PAGE ══════════════════════════════════ -->
+<div class="page" id="page-odds">
+  <div class="wide" style="padding-bottom:40px;">
+
+    <!-- header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 14px;border-bottom:1px solid var(--border);margin-bottom:18px;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:16px;font-weight:500;color:var(--ink);">Odds</div>
+        <div style="font-size:11px;color:var(--ink-3);margin-top:2px;" id="odds-updated">Loading today's lines...</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div id="odds-live-dot" style="width:6px;height:6px;border-radius:50%;background:var(--ink-5);transition:background .3s;"></div>
+          <span style="font-size:10px;color:var(--ink-4);" id="odds-live-label"></span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="buildOdds()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- TODAY'S LINES -->
+    <div class="sl" style="margin-bottom:10px;">Today's games</div>
+    <div id="odds-today-grid" style="display:grid;gap:6px;margin-bottom:28px;">
+      <div style="font-size:11px;color:var(--ink-4);padding:12px 0;">Loading...</div>
+    </div>
+
+    <!-- HISTORICAL ODDS SEARCH -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
+      <div class="sl" style="margin:0;">Historical odds</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input id="odds-search" class="ledger-search" style="width:220px;" placeholder="Search team, date, pitcher..."
+          oninput="filterOddsHistory(this.value)">
+        <select class="ledger-filter" id="odds-result-filter" onchange="filterOddsHistory(document.getElementById('odds-search').value)">
+          <option value="all">All games</option>
+          <option value="picked">Picked only</option>
+          <option value="win">Won picks</option>
+          <option value="loss">Lost picks</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card" style="margin:0;">
+      <div class="ledger-wrap">
+        <table class="lt" style="table-layout:fixed;width:100%;">
+          <thead><tr>
+            <th style="width:65px;">Date</th>
+            <th style="width:180px;">Matchup</th>
+            <th style="width:70px;">Away ML</th>
+            <th style="width:70px;">Home ML</th>
+            <th style="width:65px;">O/U</th>
+            <th style="width:65px;">Spread</th>
+            <th style="width:80px;">Result</th>
+            <th style="width:80px;">Pick</th>
+          </tr></thead>
+          <tbody id="odds-history-body">
+            <tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:24px;font-size:12px;">
+              Sync brain file to load historical odds
             </td></tr>
           </tbody>
         </table>
@@ -2201,6 +2270,200 @@ function filterHistory(search){
       <td style="${p.isW||p.isL?pc:''};font-size:11px;font-variant-numeric:tabular-nums;">${pnlStr}</td>
     </tr>`;
   }).join('');
+}
+
+// ── ODDS PAGE ──
+let ODDS_HISTORY=[];
+let ODDS_TODAY=[];
+
+async function buildOdds(){
+  await fetchOddsToday();
+  buildOddsHistory();
+}
+
+async function fetchOddsToday(){
+  const grid=document.getElementById('odds-today-grid');
+  const dot=document.getElementById('odds-live-dot');
+  const label=document.getElementById('odds-live-label');
+  const updated=document.getElementById('odds-updated');
+  if(grid)grid.innerHTML='<div style="font-size:11px;color:var(--ink-4);padding:12px 0;">Fetching lines...</div>';
+  try{
+    const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard');
+    const data=await r.json();
+    const events=data.events||[];
+    ODDS_TODAY=events.map(e=>{
+      const comp=e.competitions?.[0];
+      const home=comp?.competitors?.find(c=>c.homeAway==='home');
+      const away=comp?.competitors?.find(c=>c.homeAway==='away');
+      const odds=comp?.odds?.[0];
+      const status=comp?.status?.type?.name||'STATUS_SCHEDULED';
+      const homeProb=home?.probables?.[0];
+      const awayProb=away?.probables?.[0];
+      return{
+        id:e.id,
+        date:new Date(e.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+        time:new Date(e.date).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}),
+        awayTeam:away?.team?.abbreviation||'',
+        homeTeam:home?.team?.abbreviation||'',
+        awayName:away?.team?.shortDisplayName||away?.team?.abbreviation||'',
+        homeName:home?.team?.shortDisplayName||home?.team?.abbreviation||'',
+        awayScore:away?.score||'',
+        homeScore:home?.score||'',
+        awayML:odds?.awayTeamOdds?.moneyLine||null,
+        homeML:odds?.homeTeamOdds?.moneyLine||null,
+        overUnder:odds?.overUnder||null,
+        spread:odds?.spread||null,
+        awayPitcher:awayProb?.athlete?.displayName||'TBD',
+        homePitcher:homeProb?.athlete?.displayName||'TBD',
+        awayERA:awayProb?.statistics?.find(s=>s.name==='ERA')?.displayValue||'—',
+        homeERA:homeProb?.statistics?.find(s=>s.name==='ERA')?.displayValue||'—',
+        status,
+        isFinal:status==='STATUS_FINAL',
+        isLive:status==='STATUS_IN_PROGRESS',
+      };
+    });
+    const hasLive=ODDS_TODAY.some(g=>g.isLive);
+    if(dot){dot.style.background=hasLive?'var(--green)':'var(--ink-5)';}
+    if(label){label.textContent=hasLive?'Live':'—';}
+    if(updated){updated.textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+    renderOddsToday();
+  }catch(e){
+    if(grid)grid.innerHTML='<div style="font-size:11px;color:var(--red);padding:12px 0;">Failed to fetch odds — '+e.message+'</div>';
+  }
+}
+
+function fmtML(ml){if(!ml&&ml!==0)return'—';return(ml>0?'+':'')+ml;}
+
+function renderOddsToday(){
+  const grid=document.getElementById('odds-today-grid');
+  if(!grid||!ODDS_TODAY.length){if(grid)grid.innerHTML='<div style="font-size:11px;color:var(--ink-4);">No games today.</div>';return;}
+  // Get today's picked teams from brain/picks
+  const pickedTeams=new Set();
+  if(S.picks){
+    const lines=S.picks.split('\n');
+    for(const line of lines){
+      const m=line.match(/(?:PICK\s*\d|🥇|🥈|🥉|🏅)[^\n]*?([A-Z]{2,3})\s+(?:ML|Over|Under)/);
+      if(m)pickedTeams.add(m[1]);
+    }
+  }
+  grid.innerHTML=ODDS_TODAY.map(g=>{
+    const hasPick=pickedTeams.has(g.awayTeam)||pickedTeams.has(g.homeTeam);
+    const aLead=g.isFinal||g.isLive?parseInt(g.awayScore)>parseInt(g.homeScore):false;
+    const hLead=g.isFinal||g.isLive?parseInt(g.homeScore)>parseInt(g.awayScore):false;
+    const statusBadge=g.isLive
+      ?`<span style="font-size:9px;background:var(--green-bg);color:var(--green);border-radius:3px;padding:1px 5px;font-weight:600;">LIVE</span>`
+      :g.isFinal
+      ?`<span style="font-size:9px;background:var(--surface-2);color:var(--ink-4);border-radius:3px;padding:1px 5px;">Final</span>`
+      :`<span style="font-size:10px;color:var(--ink-3);">${g.time}</span>`;
+    return`<div style="background:var(--surface);border:1px solid ${hasPick?'var(--amber-border)':'var(--border)'};border-left:${hasPick?'3px solid var(--amber)':'1px solid var(--border)'};border-radius:${hasPick?'0 8px 8px 0':'8px'};padding:11px 14px;display:grid;grid-template-columns:1fr auto 1fr auto;gap:12px;align-items:center;">
+      <!-- Away -->
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--ink);">${g.awayName}</div>
+        <div style="font-size:10px;color:var(--ink-3);margin-top:1px;">${g.awayPitcher} <span style="color:var(--ink-4);">${g.awayERA!=='—'?'ERA '+g.awayERA:''}</span></div>
+        ${g.isLive||g.isFinal?`<div style="font-size:18px;font-weight:500;color:${aLead?'var(--green)':'var(--ink)'};">${g.awayScore}</div>`:''}
+      </div>
+      <!-- Center: status + odds -->
+      <div style="text-align:center;min-width:120px;">
+        <div style="margin-bottom:5px;">${statusBadge}</div>
+        <div style="display:flex;gap:8px;justify-content:center;font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;">
+          <span style="color:${g.awayML&&g.awayML>0?'var(--green)':'var(--ink)'};">${fmtML(g.awayML)}</span>
+          <span style="color:var(--ink-4);">·</span>
+          <span style="color:${g.homeML&&g.homeML>0?'var(--green)':'var(--ink)'};">${fmtML(g.homeML)}</span>
+        </div>
+        ${g.overUnder?`<div style="font-size:10px;color:var(--ink-3);margin-top:2px;">O/U ${g.overUnder}</div>`:''}
+        ${g.spread?`<div style="font-size:10px;color:var(--ink-4);">Spread ${g.spread}</div>`:''}
+        ${hasPick?`<div style="font-size:9px;font-weight:600;color:var(--amber-text);background:var(--amber-bg);border-radius:3px;padding:1px 6px;margin-top:4px;display:inline-block;">PICKED</div>`:''}
+      </div>
+      <!-- Home -->
+      <div style="text-align:right;">
+        <div style="font-size:12px;font-weight:500;color:var(--ink);">${g.homeName}</div>
+        <div style="font-size:10px;color:var(--ink-3);margin-top:1px;">${g.homePitcher} <span style="color:var(--ink-4);">${g.homeERA!=='—'?'ERA '+g.homeERA:''}</span></div>
+        ${g.isLive||g.isFinal?`<div style="font-size:18px;font-weight:500;color:${hLead?'var(--green)':'var(--ink)'};">${g.homeScore}</div>`:''}
+      </div>
+      <!-- Time -->
+      <div style="font-size:10px;color:var(--ink-4);text-align:right;min-width:40px;">${g.isFinal||g.isLive?'':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildOddsHistory(){
+  const tbody=document.getElementById('odds-history-body');
+  if(!tbody)return;
+  if(!S.ledger&&!S.brain){
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:24px;font-size:12px;">Sync brain file to load historical odds</td></tr>';
+    return;
+  }
+  // Parse from ledger — extract matchup, odds, result, and whether it was a pick
+  parseBrainPicks();
+  ODDS_HISTORY=ALL_PICKS.map(p=>({
+    date:p.date,
+    parsedDate:p.parsedDate,
+    matchup:p.pick,
+    pick:p.pick,
+    result:p.result,
+    isW:p.isW,isL:p.isL,isPending:p.isPending,
+    odds:p.odds,
+    ev:p.ev,
+    pnl:p.pnl,
+  }));
+  filterOddsHistory('');
+}
+
+function filterOddsHistory(search){
+  const filter=document.getElementById('odds-result-filter')?.value||'all';
+  const tbody=document.getElementById('odds-history-body');
+  if(!tbody)return;
+  let picks=[...ODDS_HISTORY];
+  if(search){const q=search.toLowerCase();picks=picks.filter(p=>p.matchup.toLowerCase().includes(q)||p.date.toLowerCase().includes(q));}
+  if(filter==='picked')picks=picks.filter(p=>p.isW||p.isL||p.isPending);
+  else if(filter==='win')picks=picks.filter(p=>p.isW);
+  else if(filter==='loss')picks=picks.filter(p=>p.isL);
+  // Also include today's games in history table
+  const todayRows=ODDS_TODAY.map(g=>{
+    const hasPick=picks.some(p=>p.matchup.includes(g.awayTeam)||p.matchup.includes(g.homeTeam));
+    return{
+      date:g.date,
+      matchup:`${g.awayName} @ ${g.homeName}`,
+      awayML:fmtML(g.awayML),
+      homeML:fmtML(g.homeML),
+      ou:g.overUnder?'o'+g.overUnder:'—',
+      spread:g.spread||'—',
+      result:g.isFinal?`${g.awayScore}-${g.homeScore}`:g.isLive?'Live':'Scheduled',
+      pickLabel:hasPick?'✅ Picked':'—',
+      isToday:true,
+    };
+  }).filter(g=>!search||(g.matchup.toLowerCase().includes(search.toLowerCase())||g.date.toLowerCase().includes(search.toLowerCase())));
+  if(!picks.length&&!todayRows.length){
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:20px;font-size:12px;">No results match</td></tr>';
+    return;
+  }
+  // Render today first, then history
+  const todayHTML=todayRows.map(g=>`<tr style="background:var(--amber-bg);">
+    <td style="font-size:10px;color:var(--amber-text);font-weight:500;">${g.date} <span style="font-size:8px;">TODAY</span></td>
+    <td style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.matchup}</td>
+    <td style="font-size:11px;font-variant-numeric:tabular-nums;">${g.awayML}</td>
+    <td style="font-size:11px;font-variant-numeric:tabular-nums;">${g.homeML}</td>
+    <td style="font-size:11px;">${g.ou}</td>
+    <td style="font-size:11px;">${g.spread}</td>
+    <td style="font-size:11px;color:var(--ink-3);">${g.result}</td>
+    <td style="font-size:11px;color:var(--amber-text);">${g.pickLabel}</td>
+  </tr>`).join('');
+  const historyHTML=picks.map(p=>{
+    const rc=p.isW?'color:var(--green)':p.isL?'color:var(--red)':'color:var(--amber-text)';
+    const res=p.isW?'✅ Win':p.isL?'❌ Loss':p.isPending?'⏳':'—';
+    const oddsStr=p.odds?(p.odds>0?'+':'')+p.odds:'—';
+    return`<tr>
+      <td style="font-size:10px;color:var(--ink-4);">${p.date.replace(/July|Jul/,'Jul').replace(/,?\s*2026/,'')}</td>
+      <td style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.matchup}</td>
+      <td style="font-size:11px;font-variant-numeric:tabular-nums;">${oddsStr}</td>
+      <td style="font-size:11px;">—</td>
+      <td style="font-size:11px;">—</td>
+      <td style="font-size:11px;">—</td>
+      <td style="${rc};font-size:11px;font-weight:500;">${res}</td>
+      <td style="font-size:10px;color:var(--amber-text);">Picked</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML=todayHTML+historyHTML;
 }
 
 loadSettings();
