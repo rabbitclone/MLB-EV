@@ -694,7 +694,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
     <div class="status-pip" id="sync-dot"></div>
     <span id="sync-label">Not connected</span>
   </div>
-  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.1.5</div>
+  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.1.6</div>
 </nav>
 <div class="signal-bar" id="signal-bar"></div>
 
@@ -1478,25 +1478,33 @@ async function pushFlags(content){
   }catch(e){toast('Flags push failed: '+e.message,'error');}
 }
 
-function updateBrainPicks(){
-  const results=['r1','r2','r3','r4'].map(id=>document.getElementById(id).value).filter(v=>v.trim());
-  const notes=document.getElementById('results-notes').value;
-  if(!results.length&&!notes){toast('Enter at least one result','error');return;}
+async function updateBrainPicks(){
   if(!S.brain){toast('Sync brain file first','error');return;}
+  // Auto-fill from ESPN if fields are empty
+  const hasResults=['r1','r2','r3','r4'].some(id=>document.getElementById(id)?.value.trim());
+  if(!hasResults) await autoFillResults('r');
+  const results=['r1','r2','r3','r4'].map(id=>document.getElementById(id)?.value||'').filter(v=>v.trim());
+  const notes=document.getElementById('results-notes')?.value||'';
+  if(!results.length&&!notes){toast('No pending picks found or games not yet final','error');return;}
   const loading=document.getElementById('results-loading'),btn=document.getElementById('update-brain-btn');
   const panel=document.getElementById('rp-panel'),out=document.getElementById('rp-output');
-  loading.style.display='flex';btn.disabled=true;panel.style.display='none';out.textContent='';
+  if(loading)loading.style.display='flex';if(btn)btn.disabled=true;
+  if(panel)panel.style.display='none';if(out)out.textContent='';
   _doUpdate(results,notes,out,panel,loading,btn);
 }
 
-function updateBrainResults(){
-  const results=['rr1','rr2','rr3','rr4'].map(id=>document.getElementById(id).value).filter(v=>v.trim());
-  const notes=document.getElementById('rr-notes').value;
-  if(!results.length&&!notes){toast('Enter at least one result','error');return;}
+async function updateBrainResults(){
   if(!S.brain){toast('Sync brain file first','error');return;}
+  // Auto-fill from ESPN if fields are empty
+  const hasResults=['rr1','rr2','rr3','rr4'].some(id=>document.getElementById(id)?.value.trim());
+  if(!hasResults) await autoFillResults('rr');
+  const results=['rr1','rr2','rr3','rr4'].map(id=>document.getElementById(id)?.value||'').filter(v=>v.trim());
+  const notes=document.getElementById('rr-notes')?.value||'';
+  if(!results.length&&!notes){toast('No pending picks found or games not yet final','error');return;}
   const loading=document.getElementById('rr-loading'),btn=document.getElementById('rr-btn');
   const panel=document.getElementById('rr-panel'),out=document.getElementById('rr-output');
-  loading.style.display='flex';btn.disabled=true;panel.style.display='none';out.textContent='';
+  if(loading)loading.style.display='flex';if(btn)btn.disabled=true;
+  if(panel)panel.style.display='none';if(out)out.textContent='';
   _doUpdate(results,notes,out,panel,loading,btn);
 }
 
@@ -1522,7 +1530,8 @@ function parsePendingPicks(){
 }
 
 // Match pending picks against ESPN scores
-async function autoFillResults(){
+async function autoFillResults(prefix){
+  const pre=prefix||'rr';
   if(!S.brain){toast('Sync brain file first','error');return;}
   const btn=document.getElementById('auto-fill-btn');
   const status=document.getElementById('auto-fill-status');
@@ -1602,12 +1611,12 @@ async function autoFillResults(){
         results.push(resultStr);
 
         // Fill the form field
-        const fieldId=i===0?'rr1':i===1?'rr2':i===2?'rr3':'rr4';
+        const fieldId=`${pre}${i===0?'1':i===1?'2':i===2?'3':'4'}`;
         const field=document.getElementById(fieldId);
         if(field)field.value=resultStr;
       } else {
         // Game not found or not final yet
-        const fieldId=i===0?'rr1':i===1?'rr2':i===2?'rr3':'rr4';
+        const fieldId=`${pre}${i===0?'1':i===1?'2':i===2?'3':'4'}`;
         const field=document.getElementById(fieldId);
         if(field)field.value=`${pick.pick} — not yet final`;
         results.push(null);
@@ -2027,7 +2036,7 @@ async function triggerAutoUpdate(){
   setAutoStatus('Updating brain...','warn');
   const results=Object.values(SLATE.finalizedResults);
   if(!results.length){setAutoStatus('No results to log','dim');return;}
-  ['r1','r2','r3','r4','rr1','rr2','rr3','rr4'].forEach((id,i)=>{const el=document.getElementById(id);if(el&&i<results.length)el.value=results[i];});
+  ['r1','r2','r3','r4','rr1','rr2','rr3','rr4'].forEach((id,i)=>{const el=document.getElementById(id);if(el&&i%4<results.length)el.value=results[i%4];});
   const loading=document.getElementById('results-loading'),btn=document.getElementById('update-brain-btn');
   const panel=document.getElementById('rp-panel'),out=document.getElementById('rp-output');
   if(loading)loading.style.display='flex';if(btn)btn.disabled=true;
