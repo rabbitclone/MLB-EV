@@ -687,14 +687,14 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
   <div class="nav-logo"><em>MLB</em> Brain</div>
   <button class="nav-btn act" onclick="showPage('picks')" id="nav-picks">Today</button>
   <button class="nav-btn" onclick="showPage('results')" id="nav-results">Analytics</button>
-  <button class="nav-btn" id="nav-ledger">History</button>
+  <button class="nav-btn" id="nav-ledger" onclick="showPage('results');if(S.ledger||S.brain){buildAnalytics();}else{toast('Sync brain file first','error');}">History</button>
   <button class="nav-btn" onclick="promptSettings()" id="nav-settings">Settings</button>
   <div class="nav-gap"></div>
   <div class="nav-status">
     <div class="status-pip" id="sync-dot"></div>
     <span id="sync-label">Not connected</span>
   </div>
-  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.1.7</div>
+  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.1.8</div>
 </nav>
 <div class="signal-bar" id="signal-bar"></div>
 
