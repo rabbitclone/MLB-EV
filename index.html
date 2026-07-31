@@ -694,7 +694,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
     <div class="status-pip" id="sync-dot"></div>
     <span id="sync-label">Not connected</span>
   </div>
-  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.1.6</div>
+  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.1.7</div>
 </nav>
 <div class="signal-bar" id="signal-bar"></div>
 
@@ -955,7 +955,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
             <th style="width:70px;">Result</th>
             <th style="width:60px;">P&amp;L</th>
           </tr></thead>
-          <tbody id="ledger-body"><tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:24px;font-size:12px;">Pull brain then open Analytics to see history</td></tr></tbody>
+          <tbody id="ledger-body"><tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:32px;font-size:12px;"><div style="margin-bottom:10px;">Sync the brain file to load pick history</div><button onclick="fetchBrain().then(()=>buildAnalytics())" style="background:var(--ink);color:#f5f3ee;border:none;border-radius:6px;padding:7px 14px;font-size:11px;cursor:pointer;">Sync brain</button></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2100,7 +2100,14 @@ if(picksPage){picksPage.style.display='block';picksPage.classList.add('act');}
 if(cfg('token')&&cfg('repo'))setTimeout(fetchBrain,500);
 startSlatePolling();
 
-document.getElementById('nav-ledger').onclick=()=>{showPage('results');buildAnalytics();};
+document.getElementById('nav-ledger').onclick=()=>{
+  showPage('results');
+  if(S.ledger||S.brain){
+    buildAnalytics();
+  } else {
+    toast('Sync brain file first to see history','error');
+  }
+};
 </script>
 </body>
 </html>
