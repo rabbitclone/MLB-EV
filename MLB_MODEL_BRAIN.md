@@ -1,16 +1,6 @@
 # ⚾ MLB +EV MODEL BRAIN
-### The single source of truth for all model rules, intelligence flags, pick history, and learned lessons.
-### Paste this file at the start of every conversation. Update it after every day's results.
-### Last updated: July 28, 2026
-
----
-
-## HOW TO USE THIS FILE
-
-1. **Start of every session:** Paste this file **and `LEARNING_LOG.md`** (or their URLs from the GitHub repo) into the conversation. Say: *"here is my model brain, run today's picks."*
-2. **After results:** Say: *"update the model brain with today's results"* — I'll produce an updated version to replace this file.
-3. **New rule confirmed:** Say: *"add rule: [what happened]"* — I'll add it with date, game, and formula.
-4. **GitHub location:** `rabbitclone/MLB-EV/MLB_MODEL_BRAIN.md`
+> Rules, flags, and lessons only. Pick history lives in MLB_LEDGER.md.
+> Last updated: July 31, 2026 · Repository: rabbitclone/MLB-EV
 
 ---
 
@@ -19,391 +9,135 @@
 | Setting | Value |
 |---|---|
 | Dashboard repo | `rabbitclone/MLB-EV` |
-| Live URL | `https://rabbitclone.github.io/mlbtable/` |
+| Live URL | `https://mlb.beclutch.me` |
 | Default password | `ev2026` |
 | Simulated stake | $10 per pick |
 | Kelly default | Half Kelly |
 | Minimum EV | +3.0% after vig removal |
 | Minimum confidence | 6/10 |
+| Ledger file | `MLB_LEDGER.md` |
 
 ---
 
 ## 🧠 PERMANENT MODEL RULES
-> Never expire. Applied to every pick before any EV calculation is finalized.
-> Confirmed by real losses that revealed model gaps.
-
----
 
 ### RULE 1 — Dual Elite Starter Total Suppression
-**Confirmed:** July 21, 2026 · PHI/LAD Over 9 loss · Wheeler 14K CG · 3 total runs
-**Formula:**
-- Both starters with season xFIP **< 3.20** → subtract **1.5 runs** from projected total before evaluating any Over
-- Raise minimum EV threshold to **+6.0%** for that game's total
-- Reduce stake to **Quarter Kelly**
-- Applies even if one starter is a regression candidate — the elite arm creates a suppression floor
-
----
+**Confirmed:** July 21, 2026 · PHI/LAD Over 9 loss
+- Both starters xFIP < 3.20 → subtract 1.5 runs from projected total
+- Raise EV threshold to +6.0% · Reduce stake to Quarter Kelly
 
 ### RULE 2 — ERA Unknown Pitcher (Sub-8 MLB Starts)
-**Confirmed:** July 21, 2026 · MIL -149 loss · Thornton 2nd start, NYM shut out MIL 4-0
-**Formula:**
-- Any starter with **< 8 MLB starts** → ERA UNKNOWN classification
-- Reduce the **opposing team's win probability by 5%** regardless of side (favorite OR underdog)
-- Recalculate EV at adjusted probability — if no longer +EV, **pass**
-- Also applies to: pitchers returning from IL with fewer than 3 post-IL starts
-- **Example:** MIL -149 → true implied 59.8% → minus 5% = 54.8% effective → fair line ~-121 → paying -149 for 54.8% = negative EV → pass
-- **⚠️ Discipline note (Jul 28):** Always verify start count BEFORE logging pick. BOS -144 vs Gage Jump (ATH) was a pass today because Jump is likely sub-8 starts — Rule 2 reduced BOS win prob to ~57%, turning a -144 line negative EV.
+**Confirmed:** July 21, 2026 · MIL -149 loss · Thornton 2nd start
+- Sub-8 starts → reduce opposing team win prob by 5% · Recalculate EV · Pass if no longer +EV
+- Applies to IL returnees with fewer than 3 post-IL starts
 
----
-
-### RULE 3 — Blended ERA Formula (Rolling 4-Start Weighting)
-**Confirmed:** July 21, 2026 · ATL -145 loss · Buehler season road ERA 5.36, last-4 ERA 3.05, pitched to 2 ER/6 IP
-**Formula:**
+### RULE 3 — Blended ERA Formula
+**Confirmed:** July 21, 2026 · ATL loss · Buehler season 5.36, last-4 3.05
 ```
-Calculate last-4-start ERA for every starter before each pick.
-
-Gap vs season ERA < 0.75    → Use season ERA (no significant trend)
-Gap 0.75 – 1.50             → Use 70% season / 30% recent
-Gap > 1.50                  → Use 45% season / 55% recent
-
-Apply in BOTH directions: improving pitchers get credit, declining get penalized.
-Blended ERA = (Season ERA × weight_S) + (Last-4 ERA × weight_R)
+Gap < 0.75   → Use season ERA
+Gap 0.75–1.50 → 70% season / 30% recent
+Gap > 1.50   → 45% season / 55% recent
 ```
-**Active applications:**
-- Buehler (SD): blended ERA ~4.09, not season 5.36 — use 4.09 going forward
-- When blended ERA narrows matchup edge to <0.50 points → drop confidence to 6/10, size to Quarter Kelly
-
----
 
 ### RULE 4 — No Prior-Game Score Anchoring
-**Confirmed:** July 21, 2026 · CLE/MIN Over 8.5 loss · Anchored on Monday's 13-4 · Tuesday total was 7
-**Rule:**
-- Prior game run totals are **NOT** a valid input for next-day projected totals
-- Valid carry-overs: bullpen workload (72hr window), confirmed injuries/lineup changes, pitcher velocity trends
-- **Blacklisted phrases** — if any appear in the rationale, discard that input:
-  - *"they scored a lot yesterday"*
-  - *"both offenses were hot Monday"*
-  - *"carried over from the series opener"*
-  - *"momentum from the blowout"*
+**Confirmed:** July 21, 2026 · CLE/MIN Over loss
+- Prior game run totals are NOT valid inputs for next-day totals
+- Blacklisted: "they scored a lot yesterday", "hot offense", "carried over momentum"
 
----
+### RULE 5 — Signal Hierarchy
+**Confirmed:** July 21, 2026 · MIA ML repeat loss
+- Tier 1: Confirmed structural SP matchup > Tier 2: ERA differential > Tier 3: Sharp handle > Tier 4: Narrative
+- Tier 3 cannot override confirmed Tier 1 in same series
 
-### RULE 5 — Signal Hierarchy (Structural Matchup > Market Signals)
-**Confirmed:** July 21, 2026 · MIA ML repeat loss · Imai splitter vs MIA RHB lineup confirmed Day 1, bet again Day 2 on sharp handle alone
-**Hierarchy (higher tiers override lower):**
-- **TIER 1:** Confirmed structural SP matchup — pitch-type dominance vs lineup composition, confirmed by actual game results
-- **TIER 2:** Starter ERA/xFIP differential (blended per Rule 3)
-- **TIER 3:** Sharp handle / reverse line movement / market signals
-- **TIER 4:** Momentum, narrative, streak, public sentiment
-- **Hard rule:** Tier 3 signal cannot override a confirmed Tier 1 signal in the same series
-- Once a structural SP advantage is confirmed by a real result, it locks for all remaining games vs that arm in that series
+### RULE 6 — Weather Adjustments
+**Confirmed:** July 21, 2026 · SF/KC Over loss · Kauffman 58°F
 
----
-
-### RULE 6 — Weather Adjustments for Totals
-**Confirmed:** July 21, 2026 · SF/KC Over 9.5 loss · 58°F at Kauffman, headwind · Total 5 runs
-**Adjustment table:**
-
-| Condition | Run Adjustment |
+| Condition | Adjustment |
 |---|---|
 | Wind out 10+ mph | +0.8 runs |
 | Wind out 15+ mph | +1.5 runs |
 | Wind in 10+ mph | −0.8 runs |
 | Wind in 15+ mph | −1.5 runs |
-| Temp below 60°F | −1.0 run |
-| Temp below 50°F | −1.8 runs |
-| Temp above 88°F | +0.5 run |
-| Humidity > 80% | −0.3 runs |
-| Coors Field headwind | Treat as pitcher's park |
-| **Kauffman < 62°F** | **−1.5 runs (confirmed threshold)** |
+| Temp < 60°F | −1.0 run |
+| Temp < 50°F | −1.8 runs |
+| Temp > 88°F | +0.5 run |
+| Kauffman < 62°F | −1.5 runs |
+| Coors headwind | Treat as pitcher's park |
 
-- Weather must be checked **within 60 min of first pitch**
-- If adjustment flips Over to Under or vice versa → **pick is a pass**
-- **Jul 28 active application:** 18 mph wind blowing out at Comerica Park → +1.5 run adjustment applied to BAL/DET total → Over 9.5 +100 identified as +EV
-
----
+Weather must be checked within 60 min of first pitch.
 
 ### RULE 7 — Imai Splitter Platoon Adjustment
-**Confirmed:** July 20–22, 2026 · HOU 3-0 vs MIA (18 runs to 10) · Splitter dominates RHB, neutral vs LHB
-**Formula:**
-- Imai splitter generates **32% chase rate vs RHB**, only **19% vs LHB**
-- When opposing lineup is **>60% RHB** → apply as **Tier 1 structural matchup** (reduces opposing win prob ~4%)
-- When opposing lineup is **>50% LHB** → flag is **neutralized** — treat as standard ERA matchup
-- **Jul 27 result:** LAA lineup LHB-heavy → Imai flag neutralized → LAA ML +104 taken → HOU won 6-4 → ❌ LOSS
-- **Lesson 13 update:** Neutralization of Imai flag does not itself create a LAA edge — it simply removes HOU's structural advantage. The correct play when flag is neutralized is to treat as a standard ERA matchup and only bet if ERA differential creates its own +EV edge, NOT to automatically flip to the opposing ML.
-- **Rule 7 amendment:** When Imai flag is neutralized by LHB lineup, evaluate matchup using ERA differential alone. Do not treat neutralization as an automatic counter-signal.
+**Confirmed:** July 20–22, 2026 · HOU 3-0 vs MIA
+- >60% RHB lineup → Tier 1 structural (−4% opposing win prob)
+- >50% LHB lineup → flag NEUTRALIZED — evaluate ERA differential only. Neutralization ≠ counter-signal.
 
----
+### RULE 8 — Coors Field Bilateral Scoring
+**Confirmed:** July 22, 2026 · WSH 8-0 at Coors · Over failed
+- Over requires both offenses to contribute · Headwind = neutral park
 
-### RULE 8 — Coors Field Bilateral Scoring Requirement
-**Confirmed:** July 22, 2026 · WSH/COL Over loss · WSH won 8-0 at Coors · Total 8, over was 10.5
-**Rule:**
-- Coors Field Over requires **both** offenses to contribute
-- A unilateral blowout (one team shut out at Coors) frequently fails the Over even with a high-scoring winner
-- Always check wind direction at Coors — headwind neutralizes altitude entirely
-- If Coors wind is blowing **in** from any direction at 10+ mph → treat as neutral park for totals, not hitter-friendly
-
----
-
-### RULE 9 — Starter Identity Verification (Pre-Pick Discipline)
-**Confirmed:** July 27–28, 2026 · PHI ML @ MIA misattributed to Wheeler flag · Wheeler pitched Monday, Nola pitched Tuesday
-**Rule:**
-- **Always confirm the day's actual starter** before applying any intelligence flag tied to a specific pitcher
-- Flags are pitcher-specific, not team-specific — a Wheeler flag does NOT transfer to Aaron Nola
-- Verify starter identity via FanGraphs probables grid or ESPN game page within 3 hours of first pitch
-- **If starter is not 100% confirmed → pick is a conditional pass until confirmation**
-- **Blacklisted shortcut:** "PHI is pitching their ace" or "MIA's rotation is strong" — identify the pitcher by name, then cross-reference flags
+### RULE 9 — Starter Identity Verification
+**Confirmed:** July 27–28, 2026 · PHI ML misattributed to Wheeler (Nola was starting)
+- Confirm starter by name before applying any pitcher-specific flag
+- If starter unconfirmed → conditional pass until confirmed
 
 ---
 
 ## 📊 ACTIVE INTELLIGENCE FLAGS
-> Team and pitcher-specific signals. Updated after each confirmed result.
-> Retired when the triggering condition no longer applies.
-
-| Flag | Team/Pitcher | Signal | Severity | Status | Confirmed |
-|---|---|---|---|---|---|
-| Wheeler home Under | PHI | Wheeler home starts → strong Under lean vs any offense; home ERA 1.35, 10-1 | STRONG | ✅ ACTIVE | Jul 21 CG shutout |
-| Misiorowski home dominance | MIL | Near-lock vs sub-.420 road teams; buy early before market adjusts | STRONG | ✅ ACTIVE | Jul 21-22 MIL wins |
-| Rasmussen sinker matchup | TB | Tier 1 vs bottom-third contact-rate offenses; sinker chase rate matchup | STRONG | ✅ ACTIVE | Jul 21-22 TB 3-0 series |
-| Imai splitter vs RHB | HOU | Tier 1 structural — RHB-heavy lineups only; NEUTRALIZED vs LHB — evaluate ERA differential only when neutralized | TIER 1 | ✅ ACTIVE (amended) | Jul 20-22 HOU 3-0 vs MIA; Jul 27 LHB test failed |
-| Buehler blended ERA | SD | Use blended ~4.09, not season 5.36; improving trend confirmed | APPLY | ✅ ACTIVE | Jul 21-22 confirmed |
-| Wrobleski road regression | LAD | ERA/xFIP gap >1.00 in **road** starts only → Over lean; flag does NOT apply to home starts | APPLY | ✅ ACTIVE (clarified) | Jul 21-22 LAD 9-5 win |
-| TEX home price inflation | TEX | Books overprice TEX home edge vs run differential | APPLY | ✅ ACTIVE | Jul 20 CWS +10 win, Jul 22 CWS win |
-| PIT bullpen strand rate | PIT | Bottom-quartile strand rate → subtract 4% from PIT underdog ML win prob | APPLY | ✅ ACTIVE | Jul 21 PIT loss |
-| BOS win streak | BOS | RETIRED Jul 22 evening — BAL won 5-1, streak broke | RETIRED | ❌ EXPIRED | Jul 22 BAL 5-1 win |
-| ERA Unknown: Thornton | NYM | Thornton now in 6th start range post-Jul 27 win — monitor start count; expires at 8th start | APPLY | ✅ ACTIVE (expires ~Aug 1) | Jul 21 confirmed · Jul 27 WIN 14-3 |
-| Doubleheader split tendency | General | Team losing G1 wins G2 at elevated rate vs expectation | NOTE | ✅ ACTIVE | Jul 22 NYY DH confirmed |
-| Coors bilateral scoring | COL | Over requires both teams scoring; headwind = neutral park | APPLY | ✅ ACTIVE | Jul 22 WSH 8-0 at Coors |
-| Kauffman cold weather | KC | Below 62°F → subtract 1.5 from projected total | STRONG | ✅ ACTIVE | Jul 21 SF/KC 5-run total |
-| ATH ERA Unknown | ATH | Drake/unproven arms → apply Rule 2 when deploying sub-8-start pitchers; Gage Jump flagged Jul 28 | APPLY | ✅ ACTIVE | Jul 20-21 confirmed; Jul 28 Jump pass |
-| CWS road offense momentum | CWS | Track hot streaks for underdog value; TEX series confirmed edge | WATCH | ✅ ACTIVE | Jul 20-22 CWS 2-1 |
-| PIT vs NYY RLM | PIT | Sharp handle >60% on PIT vs NYY is actionable at +120 or better | WATCH | ✅ ACTIVE | Jul 22 PIT won G1 |
-| MIL home vs sub-.420 road | MIL | Prioritize when facing sub-.420 road teams; buy early | STRONG | ✅ ACTIVE | Jul 21-22 confirmed |
-| Post-shutout rebound tendency | General | Teams with above-avg road wRC+ score more next game after shutout | NOTE | ✅ ACTIVE | Jul 22 CIN confirmed |
-| Comerica wind-out totals | DET | When wind is 15+ mph out at Comerica, apply +1.5 to projected total; Over becomes primary play | APPLY | ✅ ACTIVE | Jul 28 identified — result pending |
-| Melton elite form | DET | Troy Melton 1.95 ERA — elite arm currently mispriced; book DET ML at -140 or better when he starts | APPLY | ✅ ACTIVE | Jul 28 identified — result pending |
+> Flags live in **MLB_FLAGS.md** — filtered by today's confirmed starters before being sent to the AI.
+> Only flags matching today's pitchers/teams are injected into the picks prompt.
+> To add/retire a flag: edit MLB_FLAGS.md directly.
 
 ---
 
-## PRE-PICK CHECKLIST
-> Every pick must clear ALL before qualifying. No exceptions.
+## ✅ PRE-PICK CHECKLIST
 
+- [ ] Starter identity verified by NAME (Rule 9)
 - [ ] Vig removed — true implied probability calculated
 - [ ] Blended ERA applied to both starters (Rule 3)
-- [ ] ERA Unknown flag checked for both starters (Rule 2) — **confirm start count by name**
+- [ ] ERA Unknown flag checked for both starters (Rule 2)
 - [ ] Dual sub-3.20 xFIP check (Rule 1)
-- [ ] Prior-game anchoring scrubbed from reasoning (Rule 4)
-- [ ] Signal hierarchy applied — no Tier 3 overriding Tier 1 (Rule 5)
-- [ ] Weather checked and adjustments applied (Rule 6)
-- [ ] Imai platoon flag checked if HOU starting Imai (Rule 7) — neutralization ≠ counter-signal
-- [ ] Coors bilateral check if COL game with an Over (Rule 8)
-- [ ] **Starter identity verified by NAME against intelligence flags (Rule 9)**
-- [ ] All active intelligence flags cross-referenced for both teams
+- [ ] Prior-game anchoring scrubbed (Rule 4)
+- [ ] Signal hierarchy applied (Rule 5)
+- [ ] Weather checked within 60 min of first pitch (Rule 6)
+- [ ] Imai platoon flag checked if Imai starting (Rule 7)
+- [ ] Coors bilateral check for Overs (Rule 8)
+- [ ] All active intelligence flags cross-referenced
 - [ ] Lineup confirmed within 3 hrs of first pitch
-- [ ] EV ≥ +3.0% after all adjustments
-- [ ] Confidence ≥ 6/10 after all adjustments
-- [ ] Stake sizing confirmed (Half Kelly default / Quarter Kelly if Rule 1 or 2 triggered)
-- [ ] Sharp signal not the sole reason for pick (must have Tier 1 or Tier 2 support)
+- [ ] EV ≥ +3.0% (Overs ≥ +5.0%) after all adjustments
+- [ ] Confidence ≥ 6/10
+- [ ] Stake: Half Kelly default / Quarter Kelly if Rule 1 or 2 triggered
+- [ ] Sharp signal is NOT the sole reason for pick
 
 ---
 
-## 📅 PICK HISTORY — SEASON LEDGER
-> All graded picks. Updated daily.
+## 📚 RECENT LESSONS — LAST 10
+> Rolling window — 10 most recent lessons only. Full history in MLB_LEDGER.md.
+> When a new lesson is added, the oldest entry drops off this list automatically.
+> Format: **L[n] ([date]):** [lesson] — [action taken]
 
-### Running totals
-| Metric | Value |
-|---|---|
-| Season record | 17W – 19L – 2P |
-| Total graded | 38 |
-| Win rate | 47.4% |
-| Total staked | $380.00 |
-| Total P&L | −$16.35 |
-| ROI | −4.3% |
-| Avg EV at pick time | +4.7% |
-| Pending (Jul 28) | 4 picks |
-
----
-
-### July 20, 2026
-
-| Pick | Odds | EV | Result | Score | P&L | Key lesson |
-|---|---|---|---|---|---|---|
-| CWS ML vs TEX | +109 | +3.8% | ✅ WIN | CWS 10-3 | +$10.90 | TEX home price inflation confirmed |
-| ATH ML vs AZ | +114 | +4.1% | ✅ WIN | ATH 5-2 | +$11.40 | ERA Unknown (Drake) Rule 2 validated |
-| BAL ML vs BOS | +118 | +3.7% | ❌ LOSS | BOS 6-5 | −$10.00 | BOS win streak — avoid fading in 1-run games |
-| MIA ML vs HOU | +104 | +5.1% | ❌ LOSS | HOU 8-5 | −$10.00 | Imai splitter vs RHB — Tier 1 flag created |
-
-**July 20 record: 2W–2L · P&L: +$2.30**
-
----
-
-### July 21, 2026
-
-| Pick | Odds | EV | Result | Score | P&L | Key lesson |
-|---|---|---|---|---|---|---|
-| PHI/LAD Over 9 | -110 | +7.2% | ❌ LOSS | LAD 2-1 · 3 runs | −$10.00 | Rule 1 created: dual elite starter suppression |
-| LAD ML | +113 | +5.9% | ✅ WIN | LAD 2-1 | +$11.30 | RLM + sharp handle confirmed |
-| TB ML | -115 | +4.4% | ✅ WIN | TB 12-2 | +$8.70 | Rasmussen sinker matchup Tier 1 confirmed |
-| BAL ML | +118 | +3.7% | ❌ LOSS | BOS 6-5 | −$10.00 | BOS streak flag elevated |
-| MIL ML | -149 | +3.2% | ❌ LOSS | NYM 4-0 | −$10.00 | Rule 2 created: ERA Unknown both directions |
-| PIT ML | +129 | +5.8% | ✅ WIN | PIT 5-3 | +$12.90 | RLM signal confirmed |
-| ATL ML | -149 | +3.5% | ❌ LOSS | SD 8-3 | −$10.00 | Rule 3 created: Buehler blended ERA was 4.09 |
-| SF/KC Over 9.5 | -104 | +2.5% | ❌ LOSS | KC 3-2 · 5 runs | −$10.00 | Rule 6 + Kauffman threshold confirmed |
-| MIA ML | +104 | +4.8% | ❌ LOSS | HOU 5-3 | −$10.00 | Rule 5: Tier 1 Imai flag overrides Tier 3 handle |
-| MIN/CLE Over 8.5 | +108 | +4.7% | ❌ LOSS | CLE 5-2 · 7 runs | −$10.00 | Rule 4: prior-game anchoring blacklisted |
-
-**July 21 record: 3W–7L · P&L: −$37.10**
-
----
-
-### July 22, 2026
-
-| Pick | Odds | EV | Result | Score | P&L | Key lesson |
-|---|---|---|---|---|---|---|
-| PIT ML G1 | +125 | +3.9% | ✅ WIN | PIT 5-3 | +$12.50 | PIT vs NYY RLM confirmed again |
-| BAL ML G1 (BotD) | +120 | +6.4% | ❌ LOSS | BOS 6-3 | −$10.00 | BOS streak upgraded to APPLY |
-| MIL ML | -142 | +3.2% | ✅ WIN | MIL 4-3 | +$7.04 | ERA Unknown corrected Day 2 win |
-| WSH/COL Over (Coors) | -108 | +4.5% | ❌ LOSS | WSH 8-0 · 8 runs | −$10.00 | Rule 8: Coors bilateral scoring |
-| CIN/SEA Over 7.5 | +102 | +3.9% | ✅ WIN | CIN 5-3 · 8 runs | +$10.20 | Post-shutout rebound confirmed |
-| ATH/AZ Over 9.5 | -104 | +4.3% | ❌ LOSS | AZ 15-5 · 20 runs | −$10.00 | Over won; prefer Over to underdog ML when ERA Unknown active |
-| TB ML | -112 | +3.6% | ✅ WIN | TB 4-2 | +$8.93 | Rasmussen vs TOR: 3-0 in series, STRONG flag |
-| BAL ML G2 (eve) | +120 | +5.8% | ✅ WIN | BAL 5-1 | +$12.00 | BOS streak BROKEN. Flag retired. |
-| ATL ML | -144 | +3.5% | ✅ WIN | ATL 7-6 | +$6.94 | Blended ERA played; ATL home offense elite |
-| CWS ML | +110 | +5.2% | ✅ WIN | CWS 4-2 | +$11.00 | TEX home inflation flag APPLY confirmed |
-| MIA — PASS | — | — | PASS (correct) | HOU 5-2 | $0 | Imai Tier 1 discipline held |
-| LAD ML | +115 | +5.9% | ✅ WIN | LAD 9-5 | +$11.50 | Wrobleski regression confirmed: 9 ER |
-| NYY ML G2 | -150 | +2.0% | ✅ WIN | NYY 2-0 | +$6.67 | DH split tendency confirmed |
-
-**July 22 record: 9W–4L · P&L: +$56.78**
-
----
-
-### July 23, 2026
-
-| Pick | Odds | EV | Result | Score | P&L | Key lesson |
-|---|---|---|---|---|---|---|
-| KC ML @ DET | +190 | +8.1% | ✅ WIN | KC 3-2 | +$19.00 | Dobnak regression; DET offense cold (.311 wOBA) |
-
-**July 23 record: 1W–0L · P&L: +$19.00**
-
----
-
-### July 27, 2026
-
-| Pick | Odds | EV | Result | Score | P&L | Key lesson |
-|---|---|---|---|---|---|---|
-| LAA ML vs HOU | +104 | +5.5% | ❌ LOSS | HOU 6-4 | −$10.00 | Rule 7 amendment: Imai neutralization ≠ counter-signal. Evaluate ERA diff only when flag neutralized. |
-| PHI ML @ MIA | -164 | +5.1% | ❌ LOSS | MIA 8-7 | −$10.00 | ⚠️ Rule 9 created: Pick was Nola game, not Wheeler game. Wheeler flag misapplied. Always verify starter identity by name. |
-| NYM ML vs ATL | +102 | +5.1% | ✅ WIN | NYM 14-3 | +$10.20 | Rule 2 confirmed: Thornton 5th start, ATL win prob -5% → NYM +EV at +102. Dominant 14-3 result. |
-
-**July 27 record: 1W–2L · P&L: −$9.80**
-
----
-
-### July 28, 2026 — PENDING
-
-| Pick | Odds | EV | Confidence | Stake | Rules triggered | Status |
-|---|---|---|---|---|---|---|
-| DET ML vs BAL | -139 | +6.4% | 7/10 | Half Kelly ($5) | Rule 3 (Melton 1.95 vs Kremer 5.06, 3.11 ERA gap) | ⏳ Pending |
-| BAL/DET Over 9.5 | +100 | +9–12% | 6.5/10 | Qtr Kelly ($2.50) | Rule 6 (18 mph wind out at Comerica, +1.5 runs) | ⏳ Pending — weather recheck required before first pitch |
-| HOU ML @ LAA | -105 | +7.4% | 6.5/10 | Half Kelly ($5) | Rule 3 (Lambert 3.03 vs Detmers 4.05, mispriced near pick'em) | ⏳ Pending |
-| SD ML vs COL | -179 | +11–14% | 7/10 | Qtr Kelly ($2.50) | Rule 3 (King 3.25 vs Lorenzen 6.64, massive ERA gap) | ⏳ Pending — do not take worse than -190 |
-
----
-
-## 📚 LEARNING LOG
-> **Moved to `LEARNING_LOG.md`** (same repo) — chronological record of every model insight, pattern, and adjustment.
-> Read both files at session start. New lessons go in the log file; permanent rules distilled from them stay here.
-> Current through Lesson 18 (Jul 28, pending).
-
----
-
-## 📈 MODEL PERFORMANCE BY RULE
-
-| Rule | Times applied | Correct calls | Win rate |
-|---|---|---|---|
-| Rule 1 (dual elite suppression) | 1 | 1 (Over loss avoided if applied) | — |
-| Rule 2 (ERA Unknown) | 6 | 5 | 83% |
-| Rule 3 (blended ERA) | 3 | 2 | 67% |
-| Rule 4 (no prior anchoring) | 1 | 1 (confirmed loss from violation) | — |
-| Rule 5 (signal hierarchy) | 2 | 2 | 100% |
-| Rule 6 (weather) | 2 | 2 | 100% |
-| Rule 7 (Imai platoon) | 2 | 1 | 50% — amended after Jul 27 loss |
-| Rule 8 (Coors bilateral) | 1 | 1 | 100% |
-| Rule 9 (starter identity) | 0 | — | Created Jul 28 |
-
----
-
-## 📊 PERFORMANCE ANALYTICS
-
-### Win rate by market type
-| Market | W | L | Win % | P&L |
-|---|---|---|---|---|
-| ML underdog | 9 | 8 | 52.9% | +$54.20 |
-| ML favorite | 4 | 9 | 30.8% | −$51.60 |
-| Total (Over) | 2 | 4 | 33.3% | −$28.40 |
-| Pass (correct) | 2 | 0 | 100% | $0 |
-
-### Win rate by EV bucket
-| EV range | W | L | Win % |
-|---|---|---|---|
-| +3.0% – +5.0% | 8 | 9 | 47.1% |
-| +5.0% – +8.0% | 8 | 7 | 53.3% |
-| +8.0%+ | 1 | 0 | 100% |
-| Below +3.0% (should pass) | 0 | 2 | 0% |
-
-### Win rate by signal type
-| Primary signal | W | L | Win % |
-|---|---|---|---|
-| RLM / sharp handle | 5 | 3 | 62.5% |
-| ERA differential | 4 | 7 | 36.4% |
-| Intelligence flag | 3 | 1 | 75.0% |
-| ERA Unknown (Rule 2) | 5 | 1 | 83.3% |
-| Totals model | 2 | 4 | 33.3% |
-
-**Key observations:**
-- ML favorites now 30.8% — significant underperformance. Consider raising favorite threshold to -130 max, or requiring secondary confirmation signal.
-- ERA Unknown (Rule 2) is the highest-confidence signal at 83%. Keep applying aggressively.
-- Intelligence flags at 75% — confirmed structural edges continue to outperform raw ERA differential.
-- Over bets at 33% — raise Over EV threshold to **+5.0% minimum** (previously +4.0% was suggested, now confirmed necessary).
-- ⚠️ Two July 27 losses both stem from non-model errors (starter misidentification, Imai rule misapplication). These are correctable process failures, not signal failures.
+**L12 (Jul 22):** BOS streak broke in series finale. Finales are highest-probability break point for active streaks.
+**L13 (Jul 22):** Rasmussen 3-0 vs TOR, 23-5 run diff. Sinker vs contact-weak lineups = Tier 1 confirmed.
+**L14 (Jul 22):** Wrobleski road regression confirmed with 9 ER. Flag applies to ROAD starts only — home starts are neutral.
+**L15 (Jul 22):** DH split confirmed — NYY lost G1 to PIT, won G2. Track in all future doubleheaders.
+**L16 (Jul 23):** Trust +8%+ EV plays even at large underdog prices. KC +190 won 3-2. Model is calibrated.
+**L17 (Jul 23):** Bieber blended ERA confirmed. Rule 3 applies to improving starters too, not just declining ones.
+**L18 (Jul 27):** Rule 7 amended — Imai LHB neutralization does NOT create a counter-edge. ERA diff only when neutralized.
+**L19 (Jul 27):** Rule 9 born — Wheeler flag misapplied when Nola was starting. Always verify starter by name.
+**L20 (Jul 28):** 4W-0L. Melton 1.95 ERA (DET 14-0), Comerica wind +1.5 (14 total), Lambert vs Detmers, King vs Lorenzen. All signals confirmed in one day.
+**L21 (Jul 29):** 4W-0L. STL -101, HOU -133 (Rodriguez 8.54 ERA), SD -142 Day 2, BOS -154. Eight consecutive wins Jul 28-29. High-EV picks (+8%+) continue to outperform.
 
 ---
 
 ## ⚠️ ONGOING WATCH LIST
-> Patterns to monitor but not yet confirmed as permanent rules.
 
-| Pattern | Observation | Games tracked | Status |
-|---|---|---|---|
-| Series finale underdog value | Teams trailing in series push hard in finales | 2 | Watch |
-| MIN underdog vs CLE | Rojas starts neutralize CLE pull-heavy lineup | 1 | Watch |
-| ATL home offense vs 5.00+ road ERA | Lopez home starts with run support | 2 | Elevate to APPLY? |
-| BOS series finale streak-break | Streaks most likely to end in series finales | 1 | Watch |
-| Bieber blended ERA (improving) | Last-2 starts 0 ER, 1 ER — blended ERA much lower | 1 | Watch |
-| Over vs sub-threshold: raise floor | Totals win rate 33% — raising minimum EV for Overs to +5.0% | 6 games | **IMPLEMENTED** |
-| ML favorites above -140 | Win rate 30.8% on ML favorites — strong underperformance | 13 games | Investigate — consider -130 ceiling |
-| Comerica wind-out totals | 18 mph out applied Jul 28 — pending first result | 1 | Watch |
-| Imai LHB neutralization misuse | Neutralizing a flag ≠ creating a counter-edge | 1 | **Rule 7 amended** |
-| Troy Melton elite tier | 1.95 ERA — if DET ML wins tonight, add as named flag | 1 | Watch → promote to flag if confirmed |
-
----
-
-## 🔧 COMMAND REFERENCE
-
-| Command | What it does |
+| Pattern | Status |
 |---|---|
-| `morning brief` | Slate overview, flagged matchups, active rules to watch |
-| `run today's picks` | Full +EV analysis, all rules applied, ranked picks |
-| `how did we do [today/yesterday]` | Grades all picks with post-game analysis |
-| `update model brain` | Produces updated version of this file with new results |
-| `add rule: [description]` | Creates new permanent rule with formula and date |
-| `add flag: [team/pitcher]` | Adds new intelligence flag |
-| `retire flag: [team/pitcher]` | Marks flag as expired |
-| `show model performance` | Analytics breakdown by rule, market, EV bucket |
-| `deep dive: [team or pitcher]` | Full current profile with all flags applied |
-| `matchup: [away] @ [home]` | Single-game isolated analysis |
-| `what do you remember` | Shows everything in this file (when pasted in session) |
+| ML favorites above −140 (30.8% win rate) | Consider −130 ceiling |
+| Totals Over minimum EV raised to +5.0% | IMPLEMENTED |
+| CLV tracking — compare pick odds to closing line | Add as manual field (future) |
+| Series finale underdog value | Watch |
+| Comerica wind-out totals | Promoted to active flag |
 
 ---
 
-*MLB +EV Model Brain · Version 1.6 · Updated July 30, 2026 (learning log split into LEARNING_LOG.md) · Repository: rabbitclone/MLB-EV*
+*MLB Brain · v2.0 · Lean file — pick history in MLB_LEDGER.md*
