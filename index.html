@@ -694,7 +694,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
     <div class="status-pip" id="sync-dot"></div>
     <span id="sync-label">Not connected</span>
   </div>
-  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.2.1</div>
+  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.2.2</div>
 </nav>
 <div class="signal-bar" id="signal-bar"></div>
 
@@ -931,33 +931,11 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
     <!-- insights -->
     <div id="analytics-insights" style="margin-bottom:16px;"></div>
 
-    <!-- ledger -->
-    <div class="card" style="margin:0 0 20px;">
-      <div class="ledger-controls">
-        <div class="card-title" style="margin-right:auto;">Pick history</div>
-        <input class="ledger-search" placeholder="Search..." oninput="filterLedger(this.value)" id="ledger-search">
-        <select class="ledger-filter" onchange="filterLedger(document.getElementById('ledger-search').value)" id="ledger-filter">
-          <option value="all">All</option>
-          <option value="win">Wins</option>
-          <option value="loss">Losses</option>
-          <option value="pending">Pending</option>
-        </select>
-      </div>
-      <div class="ledger-wrap">
-        <table class="lt" style="table-layout:fixed;width:100%;">
-          <thead><tr>
-            <th style="width:60px;">Date</th>
-            <th style="width:150px;">Pick</th>
-            <th style="width:50px;">Odds</th>
-            <th style="width:50px;">EV</th>
-            <th style="width:55px;">Type</th>
-            <th style="width:50px;">Stake</th>
-            <th style="width:70px;">Result</th>
-            <th style="width:60px;">P&amp;L</th>
-          </tr></thead>
-          <tbody id="ledger-body"><tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:32px;font-size:12px;"><div style="margin-bottom:10px;">Sync the brain file to load pick history</div><button onclick="fetchBrain().then(()=>buildAnalytics())" style="background:var(--ink);color:#f5f3ee;border:none;border-radius:6px;padding:7px 14px;font-size:11px;cursor:pointer;">Sync brain</button></td></tr></tbody>
-        </table>
-      </div>
+    <!-- link to history page -->
+    <div style="text-align:center;padding:16px 0 20px;">
+      <button onclick="showPage('ledger');if(S.ledger||S.brain){buildHistory();}" style="background:transparent;border:1px solid var(--border);border-radius:var(--radius);padding:8px 18px;font-size:12px;color:var(--ink-3);cursor:pointer;font-family:inherit;">
+        View full pick history →
+      </button>
     </div>
 
     <!-- log form -->
