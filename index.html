@@ -694,7 +694,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
     <div class="status-pip" id="sync-dot"></div>
     <span id="sync-label">Not connected</span>
   </div>
-  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.1.8</div>
+  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.1.9</div>
 </nav>
 <div class="signal-bar" id="signal-bar"></div>
 
@@ -2099,15 +2099,6 @@ const picksPage=document.getElementById('page-picks');
 if(picksPage){picksPage.style.display='block';picksPage.classList.add('act');}
 if(cfg('token')&&cfg('repo'))setTimeout(fetchBrain,500);
 startSlatePolling();
-
-document.getElementById('nav-ledger').onclick=()=>{
-  showPage('results');
-  if(S.ledger||S.brain){
-    buildAnalytics();
-  } else {
-    toast('Sync brain file first to see history','error');
-  }
-};
 </script>
 </body>
 </html>
