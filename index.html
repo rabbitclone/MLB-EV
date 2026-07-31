@@ -687,14 +687,14 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
   <div class="nav-logo"><em>MLB</em> Brain</div>
   <button class="nav-btn act" onclick="showPage('picks')" id="nav-picks">Today</button>
   <button class="nav-btn" onclick="showPage('results')" id="nav-results">Analytics</button>
-  <button class="nav-btn" id="nav-ledger" onclick="document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('act'));this.classList.add('act');showPage('results');if(S.ledger||S.brain){buildAnalytics();setTimeout(()=>{document.getElementById('ledger-body')?.closest('.card')?.scrollIntoView({behavior:'smooth'});},300);}else{toast('Sync brain file first','error');}">History</button>
+  <button class="nav-btn" id="nav-ledger" onclick="showPage('ledger');if(S.ledger||S.brain){buildHistory();}else{toast('Sync brain file first','error');}">History</button>
   <button class="nav-btn" onclick="promptSettings()" id="nav-settings">Settings</button>
   <div class="nav-gap"></div>
   <div class="nav-status">
     <div class="status-pip" id="sync-dot"></div>
     <span id="sync-label">Not connected</span>
   </div>
-  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.2.0</div>
+  <div style="font-size:10px;color:#3a3830;margin-left:12px;letter-spacing:.04em;font-family:var(--mono);padding:2px 7px;background:#222018;border-radius:4px;">v3.2.1</div>
 </nav>
 <div class="signal-bar" id="signal-bar"></div>
 
@@ -1000,7 +1000,73 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 <!-- end page-results -->
 
 <!-- LEDGER redirect shell -->
-<div class="page" id="page-ledger"></div>
+<div class="page" id="page-ledger">
+  <div class="wide" style="padding-bottom:40px;">
+
+    <!-- header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 14px;border-bottom:1px solid var(--border);margin-bottom:18px;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:16px;font-weight:500;color:var(--ink);">Pick History</div>
+        <div style="font-size:11px;color:var(--ink-3);margin-top:2px;" id="history-record-label">All time record</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="period-tabs">
+          <button class="ptab" id="hp-all" onclick="setHistoryPeriod('all',this)">All time</button>
+          <button class="ptab" id="hp-month" onclick="setHistoryPeriod('month',this)">Month</button>
+          <button class="ptab act" id="hp-week7" onclick="setHistoryPeriod('week7',this)">7 days</button>
+          <button class="ptab" id="hp-week" onclick="setHistoryPeriod('week',this)">This week</button>
+          <button class="ptab" id="hp-day" onclick="setHistoryPeriod('day',this)">Today</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="buildHistory()">Refresh</button>
+      </div>
+    </div>
+
+    <!-- summary stats -->
+    <div class="kpi-grid" id="history-kpis" style="margin-bottom:18px;">
+      <div class="kpi"><div class="kpi-lbl">Record</div><div class="kpi-val" id="h-record">—</div></div>
+      <div class="kpi"><div class="kpi-lbl">P&L</div><div class="kpi-val" id="h-pnl">—</div></div>
+      <div class="kpi"><div class="kpi-lbl">ROI</div><div class="kpi-val" id="h-roi">—</div></div>
+      <div class="kpi"><div class="kpi-lbl">Win rate</div><div class="kpi-val" id="h-wr">—</div></div>
+      <div class="kpi"><div class="kpi-lbl">Avg EV</div><div class="kpi-val" id="h-ev">—</div></div>
+      <div class="kpi"><div class="kpi-lbl">Staked</div><div class="kpi-val" id="h-staked">—</div></div>
+    </div>
+
+    <!-- full ledger -->
+    <div class="card" style="margin:0;">
+      <div class="ledger-controls">
+        <div class="card-title" style="margin-right:auto;">All picks</div>
+        <input class="ledger-search" placeholder="Search team, date..." oninput="filterHistory(this.value)" id="history-search">
+        <select class="ledger-filter" onchange="filterHistory(document.getElementById('history-search').value)" id="history-filter">
+          <option value="all">All results</option>
+          <option value="win">Wins only</option>
+          <option value="loss">Losses only</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+      <div class="ledger-wrap">
+        <table class="lt" style="table-layout:fixed;width:100%;">
+          <thead><tr>
+            <th style="width:60px;">Date</th>
+            <th style="width:160px;">Pick</th>
+            <th style="width:55px;">Odds</th>
+            <th style="width:50px;">EV</th>
+            <th style="width:55px;">Type</th>
+            <th style="width:55px;">Stake</th>
+            <th style="width:75px;">Result</th>
+            <th style="width:65px;">P&L</th>
+          </tr></thead>
+          <tbody id="history-body">
+            <tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:32px;font-size:12px;">
+              <div style="margin-bottom:10px;">Sync the brain file to load pick history</div>
+              <button onclick="fetchBrain().then(()=>buildHistory())" style="background:var(--ink);color:#f5f3ee;border:none;border-radius:6px;padding:7px 14px;font-size:11px;cursor:pointer;">Sync brain</button>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <!-- ══════════════════════════════════ SETTINGS PAGE ══════════════════════════════════ -->
 <div class="page" id="page-settings" style="background:var(--page);padding:24px;min-height:80vh;">
@@ -1174,6 +1240,7 @@ async function fetchBrain(){
     updateStepState();
     toast('Brain + ledger + flags synced','success');
     if(document.getElementById('page-results').classList.contains('act'))buildAnalytics();
+    if(document.getElementById('page-ledger').classList.contains('act'))buildHistory();
   }catch(e){
     d.textContent='Error: '+e.message;
     document.getElementById('sync-dot').className='status-pip err';
@@ -2089,6 +2156,73 @@ function startSlatePolling(){
   fetchSlate();
   if(SLATE.interval)clearInterval(SLATE.interval);
   SLATE.interval=setInterval(fetchSlate,90000);
+}
+
+let HISTORY_PERIOD='week7';
+let HISTORY_PICKS=[];
+
+function setHistoryPeriod(p,btn){
+  HISTORY_PERIOD=p;
+  document.querySelectorAll('[id^=hp-]').forEach(b=>b.classList.remove('act'));
+  if(btn)btn.classList.add('act');
+  buildHistory();
+}
+
+function buildHistory(){
+  if(!S.ledger&&!S.brain){toast('Sync brain file first','error');return;}
+  parseBrainPicks();
+  const picks=filterByPeriod(ALL_PICKS,HISTORY_PERIOD);
+  HISTORY_PICKS=picks;
+  const g=picks.filter(p=>p.isW||p.isL);
+  const wins=g.filter(p=>p.isW).length,losses=g.length-wins;
+  const pnl=g.reduce((s,p)=>s+p.pnl,0);
+  const staked=g.reduce((s,p)=>s+p.stake,0)||g.length*10;
+  const roi=staked>0?((pnl/staked)*100).toFixed(1):'0.0';
+  const wr=g.length>0?((wins/g.length)*100).toFixed(1):'0.0';
+  const avgEV=g.length>0?(g.reduce((s,p)=>s+p.ev,0)/g.length).toFixed(1):'0.0';
+  const periodLabels={all:'All time',month:'This month',week7:'Last 7 days',week:'This week',day:'Today'};
+  const label=document.getElementById('history-record-label');
+  if(label)label.textContent=periodLabels[HISTORY_PERIOD];
+  const sv=(id,val,cls)=>{const e=document.getElementById(id);if(e){e.textContent=val;e.className='kpi-val'+(cls?' '+cls:'');}};
+  sv('h-record',wins+'W–'+losses+'L',wins>losses?'pos':losses>wins?'neg':'');
+  sv('h-pnl',(pnl>=0?'+':'')+'$'+Math.abs(pnl).toFixed(2),pnl>=0?'pos':'neg');
+  sv('h-roi',(roi>=0?'+':'')+roi+'%',parseFloat(roi)>=0?'amb':'neg');
+  sv('h-wr',wr+'%',parseFloat(wr)>=50?'pos':'neg');
+  sv('h-ev','+'+avgEV+'%','amb');
+  sv('h-staked','$'+staked.toFixed(0),'');
+  filterHistory('');
+}
+
+function filterHistory(search){
+  const filter=document.getElementById('history-filter')?.value||'all';
+  const tbody=document.getElementById('history-body');
+  if(!tbody)return;
+  let picks=HISTORY_PICKS;
+  if(search)picks=picks.filter(p=>p.pick.toLowerCase().includes(search.toLowerCase())||p.date.toLowerCase().includes(search.toLowerCase()));
+  if(filter==='win')picks=picks.filter(p=>p.isW);
+  else if(filter==='loss')picks=picks.filter(p=>p.isL);
+  else if(filter==='pending')picks=picks.filter(p=>p.isPending);
+  if(!picks.length){
+    tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--ink-4);padding:24px;font-size:12px;">${HISTORY_PICKS.length?'No picks match this filter':'No picks in this period'}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=picks.map(p=>{
+    const rc=p.isW?'color:var(--green)':p.isL?'color:var(--red)':'color:var(--amber-text)';
+    const pc=p.pnl>=0?'color:var(--green)':'color:var(--red)';
+    const res=p.isW?'✅ Win':p.isL?'❌ Loss':'⏳ Pending';
+    const pnlStr=p.isW||p.isL?(p.pnl>=0?'+':'')+' $'+Math.abs(p.pnl).toFixed(2):'—';
+    const mkt=p.market==='total'?'Total':p.market==='runline'?'RL':'ML';
+    return`<tr>
+      <td style="color:var(--ink-4);font-size:10px;">${p.date.replace(/July|Jul/,'Jul').replace(/,?\s*2026/,'')}</td>
+      <td style="font-weight:500;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.pick}</td>
+      <td style="font-variant-numeric:tabular-nums;font-size:11px;">${p.odds?(p.odds>0?'+':'')+p.odds:'—'}</td>
+      <td style="color:var(--amber-text);font-size:11px;">${p.ev?('+'+p.ev+'%'):'—'}</td>
+      <td><span style="font-size:9px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--ink-3);">${mkt}</span></td>
+      <td style="font-size:11px;">$${p.stake>0?p.stake.toFixed(0):'10'}</td>
+      <td style="${rc};font-size:11px;font-weight:500;">${res}</td>
+      <td style="${p.isW||p.isL?pc:''};font-size:11px;font-variant-numeric:tabular-nums;">${pnlStr}</td>
+    </tr>`;
+  }).join('');
 }
 
 loadSettings();
