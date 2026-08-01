@@ -1328,7 +1328,9 @@ function copyPicks(){if(!S.picks){toast('No analysis yet','error');return;}navig
 async function callAI(messages,onChunk,sys){
   const key=cfg('apikey');
   if(!key)throw new Error('Anthropic API key not set — go to Settings');
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8000,stream:true,system:sys||'You are an expert MLB sports betting analyst.',messages})});
+  // Sanitize: ensure every message has non-empty string content
+  const safeMessages=messages.map(m=>({...m,content:String(m.content||'').trim()||'(empty)'}));
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8000,stream:true,system:sys||'You are an expert MLB sports betting analyst.',messages:safeMessages})});
   if(!r.ok){const e=await r.json().catch(()=>{});throw new Error(e?.error?.message||'API error '+r.status);}
   const reader=r.body.getReader(),dec=new TextDecoder();
   let full='';
@@ -1774,7 +1776,7 @@ async function testConnections(){
   const token=cfg('token'),repo=cfg('repo'),key=cfg('apikey');
   if(token&&repo){try{const r=await fetch(`https://api.github.com/repos/${repo}`,{headers:{'Authorization':'token '+token}});if(r.ok)toast('GitHub connected','success');else throw new Error('HTTP '+r.status);}catch(e){toast('GitHub: '+e.message,'error');}}
   else toast('Enter GitHub token and repo first','error');
-  if(key){try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:5,messages:[{role:'user',content:'hi'}]})});if(r.ok)toast('Anthropic API connected','success');else throw new Error('HTTP '+r.status);}catch(e){toast('Anthropic: '+e.message,'error');}}
+  if(key){try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:5,messages:[{role:'user',content:'hi'}]})});if(r.ok)toast('Anthropic API connected ✓','success');else{const e=await r.json().catch(()=>({}));throw new Error('HTTP '+r.status+': '+(e?.error?.message||'check API key in Settings'));}}catch(e){toast('Anthropic: '+e.message,'error');}}
   else toast('Enter Anthropic API key first','error');
 }
 
@@ -1997,6 +1999,7 @@ function renderMarketChart(g){
 
 function renderLedgerTable(picks,search,filter){
   const tb=document.getElementById('ledger-body');
+  if(!tb)return; // element only exists on the History tab, not Analytics
   let f=picks;
   if(search)f=f.filter(p=>p.pick.toLowerCase().includes(search.toLowerCase())||p.date.toLowerCase().includes(search.toLowerCase()));
   if(filter==='win')f=f.filter(p=>p.isW);
